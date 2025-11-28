@@ -1,0 +1,58 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install cloudflared
+        run: |
+          sudo mkdir -p --mode=0755 /usr/share/keyrings
+          curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg \
+            | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+          echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared jammy main' \
+            | sudo tee /etc/apt/sources.list.d/cloudflared.list
+          sudo apt-get update
+          sudo apt-get install -y cloudflared
+
+      - name: Setup Cloudflare Access cert + token
+        run: |
+          mkdir -p ~/.cloudflared
+          echo "${{ secrets.CF_CERT_PEM }}" > ~/.cloudflared/cert.pem
+          chmod 600 ~/.cloudflared/cert.pem
+
+          # token.yml → definiuje ID + Secret dla cloudflared
+          cat <<EOF > ~/.cloudflared/token.yml
+          tunnel_token: null
+          ingress:
+            - service: ssh://localhost:22
+          credentials:
+            client_id: "${{ secrets.CF_CLIENT_ID }}"
+            client_secret: "${{ secrets.CF_CLIENT_SECRET }}"
+          EOF
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+          cat <<EOF > ~/.ssh/config
+          Host raspi
+            HostName ssh.mrajczyk.dev
+            User ${{ secrets.SSH_USER }}
+            IdentityFile ~/.ssh/id_ed25519
+            ProxyCommand cloudflared access ssh --hostname %h --config ~/.cloudflared/token.yml
+          EOF
+          chmod 600 ~/.ssh/config
+
+      - name: Test SSH
+        run: ssh -vvv raspi "echo '✔ Connected via Cloudflare Access SSH from GitHub!'"
