@@ -61,4 +61,4 @@ jobs:
           chmod 600 ~/.ssh/config
 
       - name: Test SSH
-        run: ssh -vvv raspi "echo '✔ Connected via Cloudflare Access SSH from GitHub!'"
+        run: ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null raspi "echo '✔ Connected via Cloudflare Access SSH from GitHub!'"
