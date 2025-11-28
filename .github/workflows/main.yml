@@ -51,7 +51,11 @@ jobs:
             HostName ssh.mrajczyk.dev
             User ${{ secrets.SSH_USER }}
             IdentityFile ~/.ssh/id_ed25519
-            ProxyCommand cloudflared access ssh --hostname %h --config ~/.cloudflared/token.yml
+            # ZAMIENIAMY ProxyCommand na WSTRZYKNIĘCIE TOKENA:
+            ProxyCommand cloudflared access ssh \
+              --hostname %h \
+              --service-token-id "${{ secrets.CF_CLIENT_ID }}" \
+              --service-token-secret "${{ secrets.CF_CLIENT_SECRET }}"
           EOF
           chmod 600 ~/.ssh/config
 
