@@ -25,7 +25,7 @@ jobs:
       - name: Setup Cloudflare Access cert + token
         run: |
           mkdir -p ~/.cloudflared
-          echo "${{ secrets.CF_CERT_PEM }}" > ~/.cloudflared/cert.pem
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.cloudflared/cert.pem
 
           # token.yml → definiuje ID + Secret dla cloudflared
