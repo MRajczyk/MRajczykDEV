@@ -2,7 +2,7 @@ name: Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   deploy:
@@ -40,22 +40,17 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s' "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
 
           cat <<EOF > ~/.ssh/config
           Host raspi
             HostName ssh.mrajczyk.dev
             User ${{ secrets.SSH_USER }}
             IdentityFile ~/.ssh/id_ed25519
+            ProxyCommand cloudflared access ssh --hostname %h --service-token-id ${{ secrets.CF_CLIENT_ID }} --service-token-secret ${{ secrets.CF_CLIENT_SECRET }}
             StrictHostKeyChecking no
             UserKnownHostsFile /dev/null
-            ProxyCommand cloudflared access ssh \
-              --hostname %h \
-              --service-token-id "${{ secrets.CF_CLIENT_ID }}" \
-              --service-token-secret "${{ secrets.CF_CLIENT_SECRET }}"
           EOF
           chmod 600 ~/.ssh/config
 
