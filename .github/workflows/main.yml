@@ -22,10 +22,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cloudflared
 
+      - name: Setup Cloudflare Access cert + token
+        run: |
+          mkdir -p ~/.cloudflared
+          echo "${{ secrets.CF_CERT_PEM }}" > ~/.cloudflared/cert.pem
+          chmod 600 ~/.cloudflared/cert.pem
+
+          cat <<EOF > ~/.cloudflared/token.yml
+          tunnel_token: null
+          ingress:
+            - service: ssh://localhost:22
+          credentials:
+            client_id: "${{ secrets.CF_CLIENT_ID }}"
+            client_secret: "${{ secrets.CF_CLIENT_SECRET }}"
+          EOF
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          printf '%s' "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
           cat <<EOF > ~/.ssh/config
@@ -33,11 +48,14 @@ jobs:
             HostName ssh.mrajczyk.dev
             User ${{ secrets.SSH_USER }}
             IdentityFile ~/.ssh/id_ed25519
-            ProxyCommand cloudflared access ssh --hostname %h --service-token-id ${{ secrets.CF_CLIENT_ID }} --service-token-secret ${{ secrets.CF_CLIENT_SECRET }}
             StrictHostKeyChecking no
             UserKnownHostsFile /dev/null
+            ProxyCommand cloudflared access ssh \
+              --hostname %h \
+              --service-token-id "${{ secrets.CF_CLIENT_ID }}" \
+              --service-token-secret "${{ secrets.CF_CLIENT_SECRET }}"
           EOF
           chmod 600 ~/.ssh/config
 
       - name: Test SSH
-        run: ssh raspi "echo '✔ Connected via Cloudflare Access SSH from GitHub!'"
+        run: ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null raspi "echo '✔ Connected via Cloudflare Access SSH from GitHub!'"
