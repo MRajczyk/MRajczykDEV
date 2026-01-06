@@ -58,4 +58,19 @@ jobs:
           chmod 600 ~/.ssh/config
 
       - name: Test SSH
-        run: ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null raspi "echo '✔ Connected via Cloudflare Access SSH from GitHub!'"
+        run: ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null raspi "echo 'Connected via Cloudflare Access SSH from GitHub!'"
+
+      - name: Primitive deployment
+        run: |
+          ssh raspi << 'EOF'
+            set -e
+
+            cd /home/mrajczyk/Desktop/dev/test/MRajczykDEV
+            git pull
+            npm i
+            npm run build
+
+            sudo rsync -a --delete \
+              /home/mrajczyk/Desktop/dev/test/MRajczykDEV/dist/ \
+              /var/www/mrajczyk/
+          EOF
